@@ -149,6 +149,39 @@ export async function updateApplicationStatus(
   return { data, error };
 }
 
+// 出張規程関連
+export async function createTravelRegulation(regulationData: {
+  organization_id?: string;
+  name: string;
+  version?: string;
+  company_info?: object;
+  articles?: object;
+  allowance_settings?: object;
+  created_by?: string;
+}) {
+  const { data, error } = await supabase
+    .from('travel_regulations')
+    .insert([regulationData])
+    .select()
+    .single();
+
+  return { data, error };
+}
+
+export async function getTravelRegulations(userId?: string) {
+  let query = supabase
+    .from('travel_regulations')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
+  if (userId) {
+    query = query.eq('created_by', userId);
+  }
+  
+  const { data, error } = await query;
+  return { data, error };
+}
+
 // 書類管理関連
 export async function createDocument(documentData: {
   user_id: string;

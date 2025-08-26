@@ -16,6 +16,16 @@ export async function testConnection() {
     const { data, error } = await supabase.from('profiles').select('id').limit(1);
     
     if (error) {
+      // テーブルが存在しない場合の特別処理
+      if (error.code === 'PGRST116' || error.message.includes('relation "public.profiles" does not exist')) {
+        return { 
+          success: false, 
+          message: 'データベーステーブルが作成されていません', 
+          details: 'マイグレーションを実行してテーブルを作成してください',
+          error: 'Tables not created' 
+        };
+      }
+      
       return { 
         success: false, 
         message: 'Supabase接続エラー', 
@@ -163,7 +173,7 @@ export async function createExpenseApplication(applicationData: {
   description: string;
   receipt_url?: string;
 }>) {
-  // トランザクション的な処理
+  // 経費申請を作成
   const { data: application, error: appError } = await supabase
     .from('expense_applications')
     .insert([applicationData])
@@ -174,6 +184,7 @@ export async function createExpenseApplication(applicationData: {
     return { data: null, error: appError };
   }
 
+  // 経費項目を作成
   const itemsWithAppId = items.map(item => ({
     ...item,
     expense_application_id: application.id
@@ -185,7 +196,7 @@ export async function createExpenseApplication(applicationData: {
     .select();
 
   if (itemsError) {
-    // アプリケーションを削除（ロールバック）
+    // ロールバック：申請を削除
     await supabase
       .from('expense_applications')
       .delete()

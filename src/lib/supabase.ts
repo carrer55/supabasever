@@ -16,7 +16,7 @@ export async function testConnection() {
     
     if (error) {
       // テーブルが存在しない場合は正常（接続は成功）
-      if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+      if (error.code === 'PGRST116' || error.code === 'PGRST205' || error.message.includes('does not exist') || error.message.includes('Could not find the table')) {
         return { 
           success: true, 
           message: 'Supabaseに正常に接続されました（データベースは空です）',

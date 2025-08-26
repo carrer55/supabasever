@@ -21,9 +21,6 @@ import Help from './Help';
 import Support from './Support';
 import ApplicationStatusList from './ApplicationStatusList';
 import AdminDashboard from './AdminDashboard';
-import AccountingIntegration from './AccountingIntegration';
-import AccountingLog from './AccountingLog';
-import AccountingError from './AccountingError';
 
 function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -89,12 +86,6 @@ function Dashboard() {
         return <ApplicationStatusList onNavigate={navigateToView} onShowDetail={showApplicationDetail} />;
       case 'admin-dashboard':
         return <AdminDashboard onNavigate={navigateToView} />;
-      case 'accounting-integration':
-        return <AccountingIntegration onNavigate={navigateToView} />;
-      case 'accounting-log':
-        return <AccountingLog onNavigate={navigateToView} />;
-      case 'accounting-error':
-        return <AccountingError onNavigate={navigateToView} />;
       case 'application-detail':
         return applicationDetail ? (
           <ApplicationDetail 

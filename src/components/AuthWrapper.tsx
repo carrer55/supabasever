@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 import Login from './auth/Login';
 import Register from './auth/Register';
 import RegisterSuccess from './auth/RegisterSuccess';
@@ -10,101 +10,21 @@ import Dashboard from './Dashboard';
 
 function AuthWrapper() {
   const [currentView, setCurrentView] = useState<string>('login');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // デモモードのチェック
-        const demoMode = localStorage.getItem('demoMode');
-        const demoSession = localStorage.getItem('demoSession');
-        
-        if (demoMode === 'true' && demoSession) {
-          try {
-            const session = JSON.parse(demoSession);
-            if (session.user && session.user.email_confirmed_at) {
-              setIsAuthenticated(true);
-              setIsLoading(false);
-              return;
-            }
-          } catch (error) {
-            console.error('Demo session parse error:', error);
-            localStorage.removeItem('demoMode');
-            localStorage.removeItem('demoSession');
-          }
-        }
-
-        // 通常の認証状態チェック
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          if (profileError || !profile) {
-            console.error('Profile fetch error:', profileError);
-            setCurrentView('onboarding');
-          } else if (profile && !profile.onboarding_completed) {
-            setCurrentView('onboarding');
-          } else {
-            setIsAuthenticated(true);
-          }
-        } else {
-          setCurrentView('login');
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        setCurrentView('login');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id, session?.user?.email_confirmed_at);
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          if (!profile || !profile.onboarding_completed) {
-            setCurrentView('onboarding');
-          } else {
-            setIsAuthenticated(true);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setIsAuthenticated(false);
-          setCurrentView('login');
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { isAuthenticated, loading } = useAuth();
 
   const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
+    // ログイン成功時の処理は useAuth フックで自動的に処理される
   };
 
   const handleOnboardingComplete = () => {
-    setIsAuthenticated(true);
+    // オンボーディング完了時の処理も useAuth フックで自動的に処理される
   };
 
   const navigateToView = (view: string) => {
     setCurrentView(view);
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { User, Building, Phone, Briefcase, CheckCircle, ArrowRight } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { User, Building, Phone, Briefcase, CheckCircle } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 interface OnboardingProps {
   onNavigate: (view: string) => void;
@@ -15,70 +15,29 @@ function Onboarding({ onNavigate, onComplete }: OnboardingProps) {
     phone: '',
     agreeToTerms: false
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const { updateProfile, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     if (!formData.agreeToTerms) {
       setError('利用規約とプライバシーポリシーに同意してください');
-      setIsLoading(false);
       return;
     }
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        setError('ユーザー情報が見つかりません');
-        return;
-      }
+    const result = await updateProfile({
+      name: formData.fullName,
+      company: formData.companyName,
+      position: formData.position,
+      phone: formData.phone
+    });
 
-      // プロフィール情報を更新
-      const { data: updatedProfile, error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: formData.fullName,
-          company_name: formData.companyName,
-          position: formData.position,
-          phone: formData.phone,
-          onboarding_completed: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Profile update error:', updateError);
-        setError('登録に失敗しました。もう一度お試しください。');
-        return;
-      }
-
-      // ローカルストレージにもプロフィール情報を保存（デモモードとの互換性のため）
-      if (updatedProfile) {
-        localStorage.setItem('userProfile', JSON.stringify({
-          id: user.id,
-          email: user.email || '',
-          full_name: formData.fullName,
-          company_name: formData.companyName,
-          position: formData.position,
-          phone: formData.phone,
-          role: updatedProfile.role || 'user',
-          onboarding_completed: true
-        }));
-      }
-
-      // 登録完了
+    if (result.success) {
       onComplete();
-    } catch (err) {
-      console.error('Onboarding error:', err);
-      setError('登録に失敗しました。もう一度お試しください。');
-    } finally {
-      setIsLoading(false);
+    } else {
+      setError(result.error || '更新に失敗しました');
     }
   };
 
@@ -94,11 +53,11 @@ function Onboarding({ onNavigate, onComplete }: OnboardingProps) {
             <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-navy-600 to-navy-800 flex items-center justify-center shadow-2xl">
               <User className="w-16 h-16 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">本登録</h1>
-            <p className="text-slate-600">詳細情報を入力して登録を完了してください</p>
+            <h1 className="text-3xl font-bold text-slate-800 mb-2">プロフィール設定</h1>
+            <p className="text-slate-600">詳細情報を入力してください</p>
           </div>
 
-          {/* 本登録フォーム */}
+          {/* プロフィール設定フォーム */}
           <div className="backdrop-blur-xl bg-white/20 rounded-xl p-8 border border-white/30 shadow-2xl">
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
@@ -198,20 +157,13 @@ function Onboarding({ onNavigate, onComplete }: OnboardingProps) {
 
               <button
                 type="submit"
-                disabled={isLoading || !formData.agreeToTerms}
+                disabled={loading || !formData.agreeToTerms}
                 className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-navy-600 to-navy-800 hover:from-navy-700 hover:to-navy-900 text-white rounded-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <CheckCircle className="w-5 h-5" />
-                <span>{isLoading ? '登録中...' : '登録完了'}</span>
+                <span>{loading ? '設定中...' : '設定完了'}</span>
               </button>
             </form>
-
-            {/* 自動遷移の案内 */}
-            <div className="mt-6 text-center">
-              <p className="text-slate-500 text-sm">
-                登録完了後、5秒でダッシュボードに移動します
-              </p>
-            </div>
           </div>
 
           {/* フッター */}

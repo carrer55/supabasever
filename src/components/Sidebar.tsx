@@ -10,6 +10,7 @@ import {
   User,
   X
 } from 'lucide-react';
+import { auth } from '../lib/auth';
 
 const menuItems = [
   { icon: Home, label: 'ホーム', active: true },
@@ -150,17 +151,8 @@ function Sidebar({ isOpen, onClose, onNavigate, currentView = 'dashboard' }: Sid
           </div>
           <button 
             onClick={() => {
-              // デモモードの場合はローカルストレージをクリア
-              if (localStorage.getItem('demoMode') === 'true') {
-                localStorage.removeItem('demoMode');
-                localStorage.removeItem('demoSession');
-                localStorage.removeItem('userProfile');
-                window.location.reload();
-              } else {
-                // 通常のログアウト処理
-                localStorage.removeItem('userProfile');
-                supabase.auth.signOut();
-              }
+              auth.logout();
+              window.location.reload();
             }}
             className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/30 hover:bg-white/50 rounded-lg border border-white/40 transition-all duration-200 backdrop-blur-sm hover:shadow-lg"
           >

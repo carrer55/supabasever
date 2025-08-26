@@ -380,17 +380,14 @@ function MyPage({ onNavigate }: MyPageProps) {
     <div className="space-y-6">
       <div className="text-center mb-8">
         <h3 className="text-2xl font-bold text-slate-800 mb-2">会計ソフト設定</h3>
-        <p className="text-slate-600">お使いの会計システムと連携して、出張費の仕訳を自動化できます</p>
+        <p className="text-slate-600">会計ソフト連携機能は現在開発中です</p>
       </div>
 
       <div className="text-center">
-        <button
-          onClick={() => onNavigate('accounting-integration')}
-          className="flex items-center justify-center space-x-2 px-8 py-4 bg-gradient-to-r from-navy-600 to-navy-800 text-white rounded-lg font-medium hover:from-navy-700 hover:to-navy-900 transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:scale-105 mx-auto"
-        >
-          <Link className="w-5 h-5" />
-          <span>会計ソフト連携設定を開く</span>
-        </button>
+        <div className="bg-slate-100 rounded-lg p-8">
+          <Link className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+          <p className="text-slate-500">この機能は今後のアップデートで提供予定です</p>
+        </div>
       </div>
 
       <div className="bg-blue-50/50 rounded-lg p-6">

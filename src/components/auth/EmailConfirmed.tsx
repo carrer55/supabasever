@@ -7,10 +7,10 @@ interface EmailConfirmedProps {
 
 function EmailConfirmed({ onNavigate }: EmailConfirmedProps) {
   useEffect(() => {
-    // 5秒後に自動で本登録画面に遷移
+    // 3秒後に自動でオンボーディング画面に遷移
     const timer = setTimeout(() => {
       onNavigate('onboarding');
-    }, 5000);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [onNavigate]);
@@ -35,32 +35,10 @@ function EmailConfirmed({ onNavigate }: EmailConfirmedProps) {
               <p className="text-slate-600">続いて、詳細情報を入力して本登録を完了してください</p>
             </div>
 
-            {/* 次のステップ */}
-            <div className="backdrop-blur-xl bg-white/20 rounded-lg p-6 border border-white/30 mb-8">
-              <div className="flex items-center justify-center mb-4">
-                <User className="w-8 h-8 text-slate-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">本登録について</h3>
-              <div className="text-left space-y-3 text-slate-700">
-                <div className="flex items-start space-x-3">
-                  <span className="w-6 h-6 bg-navy-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">1</span>
-                  <p>法人名・役職・氏名・電話番号を入力</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <span className="w-6 h-6 bg-navy-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">2</span>
-                  <p>利用規約とプライバシーポリシーに同意</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <span className="w-6 h-6 bg-navy-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">3</span>
-                  <p>登録完了後、すぐにサービスをご利用いただけます</p>
-                </div>
-              </div>
-            </div>
-
-            {/* 自動遷移カウントダウン */}
+            {/* 自動遷移の案内 */}
             <div className="backdrop-blur-xl bg-white/20 rounded-lg p-4 border border-white/30 mb-8">
               <p className="text-slate-600 text-sm">
-                5秒後に自動的に本登録画面に移動します...
+                3秒後に自動的にプロフィール設定画面に移動します...
               </p>
             </div>
 
@@ -71,7 +49,7 @@ function EmailConfirmed({ onNavigate }: EmailConfirmedProps) {
                 className="flex items-center justify-center space-x-2 px-8 py-4 bg-gradient-to-r from-navy-600 to-navy-800 hover:from-navy-700 hover:to-navy-900 text-white rounded-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105"
               >
                 <ArrowRight className="w-5 h-5" />
-                <span>本登録に進む</span>
+                <span>プロフィール設定に進む</span>
               </button>
             </div>
           </div>

@@ -68,6 +68,7 @@ export function useExpenses() {
 
     try {
       const { data, error: createError } = await createExpenseApplication(
+      )
       const { data, error: createError } = await createApplication({
         user_id: currentUser.id,
         type: 'expense',

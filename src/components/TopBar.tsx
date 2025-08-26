@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, HelpCircle, MessageCircle, User, Menu } from 'lucide-react';
+import { Bell, HelpCircle, MessageCircle, User, Menu, Database } from 'lucide-react';
 
 interface TopBarProps {
   onMenuClick: () => void;
@@ -68,6 +68,19 @@ function TopBar({ onMenuClick, onNavigate }: TopBarProps) {
             {/* ツールチップ */}
             <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
               お問い合わせ
+              <div className="absolute left-full top-1/2 transform -translate-y-1/2 w-0 h-0 border-l-4 border-l-slate-800 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
+            </div>
+          </div>
+          <div className="relative group">
+            <button 
+              onClick={() => onNavigate && onNavigate('connection-test')}
+              className="p-2 text-slate-600 hover:text-slate-800 hover:bg-white/30 rounded-lg transition-all duration-200 backdrop-blur-sm hover:shadow-lg"
+            >
+              <Database className="w-5 h-5" />
+            </button>
+            {/* ツールチップ */}
+            <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+              DB接続テスト
               <div className="absolute left-full top-1/2 transform -translate-y-1/2 w-0 h-0 border-l-4 border-l-slate-800 border-t-2 border-t-transparent border-b-2 border-b-transparent"></div>
             </div>
           </div>

@@ -23,7 +23,6 @@ export async function testConnection() {
           message: 'データベーステーブルが作成されていません', 
           details: 'マイグレーションを実行してテーブルを作成してください',
           error: 'Tables not created' 
-          error: 'Tables not created' 
         };
       }
       

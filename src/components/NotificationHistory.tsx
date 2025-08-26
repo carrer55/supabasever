@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Bell, Mail, Smartphone, Filter, Search, Trash2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface NotificationHistoryProps {
   onNavigate: (view: string) => void;
@@ -19,57 +20,10 @@ interface Notification {
 
 function NotificationHistory({ onNavigate }: NotificationHistoryProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { notifications, loading, markAsRead } = useNotifications();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
-
-  const [notifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'email',
-      title: '出張申請が承認されました',
-      message: '田中太郎さんの東京出張申請（BT-2024-001）が承認されました。',
-      timestamp: '2024-07-20T14:30:00Z',
-      read: false,
-      category: 'approval'
-    },
-    {
-      id: '2',
-      type: 'push',
-      title: '経費申請の提出期限が近づいています',
-      message: '7月分の経費申請の提出期限は明日です。お忘れなく提出してください。',
-      timestamp: '2024-07-20T09:00:00Z',
-      read: true,
-      category: 'reminder'
-    },
-    {
-      id: '3',
-      type: 'email',
-      title: '新機能のお知らせ',
-      message: '出張規程管理機能がリリースされました。詳細はヘルプページをご確認ください。',
-      timestamp: '2024-07-19T16:00:00Z',
-      read: true,
-      category: 'update'
-    },
-    {
-      id: '4',
-      type: 'push',
-      title: 'システムメンテナンスのお知らせ',
-      message: '7月25日（木）2:00-4:00にシステムメンテナンスを実施します。',
-      timestamp: '2024-07-18T10:00:00Z',
-      read: true,
-      category: 'system'
-    },
-    {
-      id: '5',
-      type: 'email',
-      title: '出張申請が却下されました',
-      message: '佐藤花子さんの大阪出張申請（BT-2024-002）が却下されました。理由：予算超過',
-      timestamp: '2024-07-17T11:30:00Z',
-      read: true,
-      category: 'approval'
-    }
-  ]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -223,7 +177,7 @@ function NotificationHistory({ onNavigate }: NotificationHistoryProps) {
                     <div className="text-center py-12">
                       <Bell className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                       <p className="text-slate-600">
-                        {searchTerm || filterType !== 'all' || filterCategory !== 'all' 
+                        {loading ? '読み込み中...' : searchTerm || filterType !== 'all' || filterCategory !== 'all' 
                           ? '条件に一致する通知が見つかりません' 
                           : '通知履歴がありません'}
                       </p>
@@ -233,8 +187,9 @@ function NotificationHistory({ onNavigate }: NotificationHistoryProps) {
                       <div 
                         key={notification.id} 
                         className={`p-6 hover:bg-white/20 transition-colors ${
-                          !notification.read ? 'bg-navy-50/30 border-l-4 border-navy-600' : ''
+                          !notification.read ? 'bg-navy-50/30 border-l-4 border-navy-600 cursor-pointer' : ''
                         }`}
+                        onClick={() => !notification.read && markAsRead(notification.id)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -254,7 +209,7 @@ function NotificationHistory({ onNavigate }: NotificationHistoryProps) {
                             </div>
                             <p className="text-slate-600 text-sm mb-3 ml-11">{notification.message}</p>
                             <p className="text-slate-500 text-xs ml-11">
-                              {new Date(notification.timestamp).toLocaleString('ja-JP')}
+                              {new Date(notification.created_at).toLocaleString('ja-JP')}
                             </p>
                           </div>
                           <button className="text-slate-400 hover:text-red-600 transition-colors ml-4">

@@ -1,32 +1,7 @@
 import React from 'react';
 import { MoreHorizontal } from 'lucide-react';
-
-const applications = [
-  {
-    date: '2024-07-20',
-    type: '出張申請',
-    applicant: '田中太郎',
-    amount: '¥52,500',
-    status: '承認済み',
-    statusColor: 'text-emerald-700 bg-emerald-100'
-  },
-  {
-    date: '2024-07-18',
-    type: '経費申請',
-    applicant: '佐藤花子',
-    amount: '¥12,800',
-    status: '待機中',
-    statusColor: 'text-amber-700 bg-amber-100'
-  },
-  {
-    date: '2024-07-15',
-    type: '経費申請',
-    applicant: '鈴木次郎',
-    amount: '¥85,000',
-    status: '承認済み',
-    statusColor: 'text-emerald-700 bg-emerald-100'
-  }
-];
+import { useBusinessTrips } from '../hooks/useBusinessTrips';
+import { useExpenses } from '../hooks/useExpenses';
 
 interface RecentApplicationsProps {
   onShowDetail: (type: 'business-trip' | 'expense', id: string) => void;
@@ -34,6 +9,56 @@ interface RecentApplicationsProps {
 }
 
 function RecentApplications({ onShowDetail, onNavigate }: RecentApplicationsProps) {
+  const { applications: businessTrips } = useBusinessTrips();
+  const { applications: expenses } = useExpenses();
+
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      'draft': '下書き',
+      'pending': '承認待ち',
+      'approved': '承認済み',
+      'rejected': '否認',
+      'returned': '差戻し'
+    };
+    return labels[status as keyof typeof labels] || status;
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      'draft': 'text-slate-700 bg-slate-100',
+      'pending': 'text-amber-700 bg-amber-100',
+      'approved': 'text-emerald-700 bg-emerald-100',
+      'rejected': 'text-red-700 bg-red-100',
+      'returned': 'text-orange-700 bg-orange-100'
+    };
+    return colors[status as keyof typeof colors] || 'text-slate-700 bg-slate-100';
+  };
+
+  // 最新の申請を結合してソート
+  const allApplications = [
+    ...businessTrips.slice(0, 2).map(app => ({
+      id: app.id,
+      date: new Date(app.created_at).toLocaleDateString('ja-JP'),
+      type: '出張申請' as const,
+      applicant: app.profiles?.name || '不明',
+      amount: `¥${app.estimated_amount.toLocaleString()}`,
+      status: getStatusLabel(app.status),
+      statusColor: getStatusColor(app.status),
+      created_at: app.created_at
+    })),
+    ...expenses.slice(0, 2).map(app => ({
+      id: app.id,
+      date: new Date(app.created_at).toLocaleDateString('ja-JP'),
+      type: '経費申請' as const,
+      applicant: app.profiles?.name || '不明',
+      amount: `¥${app.total_amount.toLocaleString()}`,
+      status: getStatusLabel(app.status),
+      statusColor: getStatusColor(app.status),
+      created_at: app.created_at
+    }))
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+   .slice(0, 3);
+
   return (
     <div className="backdrop-blur-xl bg-white/20 rounded-xl p-4 lg:p-6 border border-white/30 shadow-xl relative overflow-hidden">
       {/* Glass effect overlay */}
@@ -60,11 +85,11 @@ function RecentApplications({ onShowDetail, onNavigate }: RecentApplicationsProp
             <span>金額</span>
             <span>ステータス</span>
           </div>
-          {applications.map((app, index) => (
+          {allApplications.map((app, index) => (
             <div 
-              key={index} 
+              key={app.id} 
               className="grid grid-cols-5 gap-2 lg:gap-4 items-center py-3 hover:bg-white/20 rounded-lg px-2 transition-colors min-w-max cursor-pointer"
-              onClick={() => onShowDetail(app.type === '出張申請' ? 'business-trip' : 'expense', `${app.type}-${index}`)}
+              onClick={() => onShowDetail(app.type === '出張申請' ? 'business-trip' : 'expense', app.id)}
             >
               <span className="text-slate-700 text-sm">{app.date}</span>
               <span className="text-slate-700 text-sm">{app.type}</span>

@@ -3,6 +3,7 @@ import { Search, Filter, Download, FileText, Calendar, MapPin, BarChart3, Trendi
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import AdvancedSearch from './AdvancedSearch';
+import { useDocuments } from '../hooks/useDocuments';
 
 interface DocumentManagementProps {
   onNavigate: (view: string, documentType?: string) => void;
@@ -22,95 +23,11 @@ interface Document {
 
 function DocumentManagement({ onNavigate }: DocumentManagementProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const { documents, loading } = useDocuments();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
-
-  useEffect(() => {
-    // サンプルデータの初期化
-    const sampleDocuments: Document[] = [
-      {
-        id: '1',
-        title: '東京出張報告書_2024年7月',
-        type: 'business-report',
-        status: 'submitted',
-        createdAt: '2024-07-20T10:00:00Z',
-        updatedAt: '2024-07-20T15:30:00Z',
-        size: '2.3MB',
-        thumbnail: '📋',
-        description: '東京クライアント訪問の出張報告書'
-      },
-      {
-        id: '2',
-        title: '7月度日当支給明細',
-        type: 'allowance-detail',
-        status: 'completed',
-        createdAt: '2024-07-31T09:00:00Z',
-        updatedAt: '2024-07-31T09:00:00Z',
-        size: '1.8MB',
-        thumbnail: '💰',
-        description: '7月度の出張日当支給明細書'
-      },
-      {
-        id: '3',
-        title: '7月度旅費精算書',
-        type: 'expense-settlement',
-        status: 'approved',
-        createdAt: '2024-07-31T14:00:00Z',
-        updatedAt: '2024-08-01T10:00:00Z',
-        size: '3.1MB',
-        thumbnail: '🧾',
-        description: '7月度の旅費精算書'
-      },
-      {
-        id: '4',
-        title: '7月度旅費明細書',
-        type: 'travel-detail',
-        status: 'completed',
-        createdAt: '2024-07-31T16:00:00Z',
-        updatedAt: '2024-07-31T16:00:00Z',
-        size: '2.7MB',
-        thumbnail: '✈️',
-        description: '7月度の旅費明細書'
-      },
-      {
-        id: '5',
-        title: '出張ログ台帳_2024年7月',
-        type: 'gps-log',
-        status: 'completed',
-        createdAt: '2024-07-31T18:00:00Z',
-        updatedAt: '2024-07-31T18:00:00Z',
-        size: '5.2MB',
-        thumbnail: '📍',
-        description: 'GPS位置情報と領収書ハッシュ記録'
-      },
-      {
-        id: '6',
-        title: '7月度月次レポート',
-        type: 'monthly-report',
-        status: 'completed',
-        createdAt: '2024-08-01T09:00:00Z',
-        updatedAt: '2024-08-01T09:00:00Z',
-        size: '4.5MB',
-        thumbnail: '📊',
-        description: '7月度の出張・経費月次集計レポート'
-      },
-      {
-        id: '7',
-        title: '2024年度年次レポート',
-        type: 'annual-report',
-        status: 'draft',
-        createdAt: '2024-08-01T11:00:00Z',
-        updatedAt: '2024-08-01T11:00:00Z',
-        size: '8.9MB',
-        thumbnail: '📈',
-        description: '2024年度の年次集計レポート'
-      }
-    ];
-    setDocuments(sampleDocuments);
-  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -151,7 +68,7 @@ function DocumentManagement({ onNavigate }: DocumentManagementProps) {
 
   const filteredDocuments = documents.filter(doc => {
     const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doc.description.toLowerCase().includes(searchTerm.toLowerCase());
+                         (doc.content as any)?.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || doc.type === filterType;
     const matchesStatus = filterStatus === 'all' || doc.status === filterStatus;
     return matchesSearch && matchesType && matchesStatus;
@@ -300,11 +217,11 @@ function DocumentManagement({ onNavigate }: DocumentManagementProps) {
                       <div className="space-y-1 text-xs text-slate-500 mb-3">
                         <div className="flex justify-between">
                           <span>作成日:</span>
-                          <span className="text-slate-600">{new Date(document.createdAt).toLocaleDateString('ja-JP')}</span>
+                          <span className="text-slate-600">{new Date(document.created_at).toLocaleDateString('ja-JP')}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>サイズ:</span>
-                          <span className="text-slate-600">{document.size}</span>
+                          <span className="text-slate-600">{document.file_size || 'N/A'}</span>
                         </div>
                       </div>
                       
@@ -341,7 +258,7 @@ function DocumentManagement({ onNavigate }: DocumentManagementProps) {
                 <div className="text-center py-12">
                   <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                   <p className="text-slate-600 text-base font-medium">
-                    {searchTerm || filterType !== 'all' || filterStatus !== 'all' 
+                    {loading ? '読み込み中...' : searchTerm || filterType !== 'all' || filterStatus !== 'all' 
                       ? '条件に一致する書類が見つかりません' 
                       : '書類がまだ作成されていません'}
                   </p>

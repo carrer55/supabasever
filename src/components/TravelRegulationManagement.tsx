@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, History, Upload, Download, FileText } from 'lucide-react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import { useTravelRegulations } from '../hooks/useTravelRegulations';
 
 interface TravelRegulationManagementProps {
   onNavigate: (view: 'dashboard' | 'business-trip' | 'expense' | 'tax-simulation' | 'travel-regulation-management' | 'travel-regulation-creation' | 'travel-regulation-history') => void;
@@ -28,30 +29,23 @@ interface Regulation {
 
 function TravelRegulationManagement({ onNavigate }: TravelRegulationManagementProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [regulations, setRegulations] = useState<Regulation[]>([]);
+  const { regulations, loading, refreshRegulations } = useTravelRegulations();
   const [searchTerm, setSearchTerm] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
-
-  useEffect(() => {
-    // ローカルストレージから規程データを読み込み
-    const savedRegulations = JSON.parse(localStorage.getItem('travelRegulations') || '[]');
-    setRegulations(savedRegulations);
-  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   const filteredRegulations = regulations.filter(regulation =>
-    (regulation.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (regulation.company_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (regulation.version || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDelete = (id: string) => {
     if (confirm('この規程を削除してもよろしいですか？')) {
-      const updatedRegulations = regulations.filter(reg => reg.id !== id);
-      setRegulations(updatedRegulations);
-      localStorage.setItem('travelRegulations', JSON.stringify(updatedRegulations));
+      // TODO: Supabaseから削除する実装
+      alert('削除機能は実装中です');
     }
   };
 
@@ -192,13 +186,13 @@ function TravelRegulationManagement({ onNavigate }: TravelRegulationManagementPr
                       {filteredRegulations.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="text-center py-12 text-slate-500">
-                            {searchTerm ? '検索結果が見つかりません' : '規程が登録されていません'}
+                            {loading ? '読み込み中...' : searchTerm ? '検索結果が見つかりません' : '規程が登録されていません'}
                           </td>
                         </tr>
                       ) : (
                         filteredRegulations.map((regulation) => (
                           <tr key={regulation.id} className="border-b border-white/20 hover:bg-white/20 transition-colors">
-                            <td className="py-4 px-6 text-slate-800 font-medium">{regulation.companyName}</td>
+                            <td className="py-4 px-6 text-slate-800 font-medium">{regulation.company_name}</td>
                             <td className="py-4 px-6 text-slate-700">{regulation.version}</td>
                             <td className="py-4 px-6">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(regulation.status)}`}>
@@ -206,15 +200,15 @@ function TravelRegulationManagement({ onNavigate }: TravelRegulationManagementPr
                               </span>
                             </td>
                             <td className="py-4 px-6 text-slate-600 text-sm">
-                              {new Date(regulation.createdAt).toLocaleDateString('ja-JP')}
+                              {new Date(regulation.created_at).toLocaleDateString('ja-JP')}
                             </td>
                             <td className="py-4 px-6 text-slate-600 text-sm">
-                              {new Date(regulation.updatedAt).toLocaleDateString('ja-JP')}
+                              {new Date(regulation.updated_at).toLocaleDateString('ja-JP')}
                             </td>
                             <td className="py-4 px-6 text-slate-600 text-sm">
                               <div className="space-y-1">
-                                <div>国内: ¥{(regulation.domesticAllowance?.general || 0).toLocaleString()}</div>
-                                <div>海外: ¥{(regulation.overseasAllowance?.general || 0).toLocaleString()}</div>
+                                <div>国内: ¥{((regulation.positions as any[])?.[0]?.dailyAllowance || 0).toLocaleString()}</div>
+                                <div>海外: ¥{(((regulation.positions as any[])?.[0]?.dailyAllowance || 0) * 1.5).toLocaleString()}</div>
                               </div>
                             </td>
                             <td className="py-4 px-6">

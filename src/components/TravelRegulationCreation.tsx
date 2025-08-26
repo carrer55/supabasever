@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Save, Download, FileText, Calendar, MapPin, Calculator, Plus, Trash2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import { useTravelRegulations } from '../hooks/useTravelRegulations';
 
 interface TravelRegulationCreationProps {
   onNavigate: (view: 'dashboard' | 'business-trip' | 'expense' | 'tax-simulation' | 'travel-regulation-management' | 'travel-regulation-creation') => void;
@@ -47,6 +48,7 @@ interface RegulationData {
 
 function TravelRegulationCreation({ onNavigate }: TravelRegulationCreationProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { createRegulation, loading } = useTravelRegulations();
   const [data, setData] = useState<RegulationData>({
     companyInfo: {
       name: '株式会社サンプル',
@@ -131,36 +133,43 @@ function TravelRegulationCreation({ onNavigate }: TravelRegulationCreationProps)
   };
 
   const handleSave = () => {
-    const savedRegulations = JSON.parse(localStorage.getItem('travelRegulations') || '[]');
-    
-    // Extract allowances from positions array
-    const executivePosition = data.positions.find(p => p.name.includes('役員')) || data.positions[0];
-    const managerPosition = data.positions.find(p => p.name.includes('管理職')) || data.positions[1] || data.positions[0];
-    const generalPosition = data.positions.find(p => p.name.includes('一般職')) || data.positions[2] || data.positions[0];
-    
-    const newRegulation = {
-      ...data,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      version: `v${data.companyInfo.revision}.0`,
-      companyName: data.companyInfo.name,
-      domesticAllowance: {
-        executive: executivePosition.dailyAllowance,
-        manager: managerPosition.dailyAllowance,
-        general: generalPosition.dailyAllowance
-      },
-      overseasAllowance: {
-        executive: executivePosition.dailyAllowance * 1.5,
-        manager: managerPosition.dailyAllowance * 1.5,
-        general: generalPosition.dailyAllowance * 1.5
+    const saveRegulation = async () => {
+      const regulationData = {
+        company_name: data.companyInfo.name,
+        version: `v${data.companyInfo.revision}.0`,
+        status: 'active',
+        company_info: data.companyInfo,
+        articles: {
+          article1: data.article1,
+          article2: data.article2,
+          article3: data.article3,
+          article4: data.article4,
+          article5: data.article5,
+          article6: data.article6,
+          article7: data.article7,
+          article8: data.article8,
+          article9: data.article9,
+          article10: data.article10
+        },
+        positions: data.positions,
+        settings: {
+          distanceThreshold: data.distanceThreshold,
+          isTransportationRealExpense: data.isTransportationRealExpense,
+          isAccommodationRealExpense: data.isAccommodationRealExpense
+        }
+      };
+
+      const result = await createRegulation(regulationData);
+
+      if (result.success) {
+        alert('出張規程が保存されました！');
+        onNavigate('travel-regulation-management');
+      } else {
+        alert(`保存に失敗しました: ${result.error}`);
       }
     };
-    
-    savedRegulations.push(newRegulation);
-    localStorage.setItem('travelRegulations', JSON.stringify(savedRegulations));
-    
-    alert('出張規程が保存されました！');
-    onNavigate('travel-regulation-management');
+
+    saveRegulation();
   };
 
   const generateDocument = (format: 'word' | 'pdf') => {
@@ -480,10 +489,11 @@ function TravelRegulationCreation({ onNavigate }: TravelRegulationCreationProps)
                   </button>
                   <button
                     onClick={handleSave}
+                    disabled={loading}
                     className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-navy-700 to-navy-900 hover:from-navy-800 hover:to-navy-950 text-white rounded-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105"
                   >
                     <Save className="w-5 h-5" />
-                    <span>規程を保存</span>
+                    <span>{loading ? '保存中...' : '規程を保存'}</span>
                   </button>
                 </div>
               </div>

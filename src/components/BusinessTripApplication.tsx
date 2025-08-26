@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, MapPin, Upload, Calculator, Save } from 'lucide-react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import { useBusinessTrips } from '../hooks/useBusinessTrips';
 
 interface BusinessTripApplicationProps {
   onNavigate: (view: 'dashboard' | 'business-trip' | 'expense') => void;
@@ -9,6 +10,7 @@ interface BusinessTripApplicationProps {
 
 function BusinessTripApplication({ onNavigate }: BusinessTripApplicationProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { createApplication, loading } = useBusinessTrips();
   const [formData, setFormData] = useState({
     purpose: '',
     startDate: '',
@@ -99,10 +101,29 @@ function BusinessTripApplication({ onNavigate }: BusinessTripApplicationProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // ここで申請データを送信
-    console.log('出張申請データ:', formData);
-    alert('出張申請が送信されました！');
-    onNavigate('dashboard');
+    
+    const submitApplication = async () => {
+      const result = await createApplication({
+        title: `${formData.destination}出張`,
+        purpose: formData.purpose,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+        destination: formData.destination,
+        estimated_amount: formData.estimatedExpenses.total,
+        daily_allowance: formData.estimatedExpenses.dailyAllowance,
+        transportation_cost: formData.estimatedExpenses.transportation,
+        accommodation_cost: formData.estimatedExpenses.accommodation
+      });
+
+      if (result.success) {
+        alert('出張申請が送信されました！');
+        onNavigate('dashboard');
+      } else {
+        alert(`申請の送信に失敗しました: ${result.error}`);
+      }
+    };
+
+    submitApplication();
   };
 
   const onBack = () => {
@@ -304,10 +325,11 @@ function BusinessTripApplication({ onNavigate }: BusinessTripApplicationProps) {
                   </button>
                   <button
                     type="submit"
+                    disabled={loading}
                     className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-navy-700 to-navy-900 hover:from-navy-800 hover:to-navy-950 text-white rounded-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105"
                   >
                     <Save className="w-5 h-5" />
-                    <span>申請を送信</span>
+                    <span>{loading ? '送信中...' : '申請を送信'}</span>
                   </button>
                 </div>
               </form>

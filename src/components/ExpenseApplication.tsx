@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Save, Upload, Camera, FileText } from 'lucide-react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import { useExpenses } from '../hooks/useExpenses';
 
 interface ExpenseApplicationProps {
   onNavigate: (view: 'dashboard' | 'business-trip' | 'expense') => void;
@@ -23,6 +24,7 @@ interface ExpenseItem {
 
 function ExpenseApplication({ onNavigate }: ExpenseApplicationProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { createApplication, loading } = useExpenses();
   const [expenses, setExpenses] = useState<ExpenseItem[]>([
     {
       id: '1',
@@ -89,9 +91,28 @@ function ExpenseApplication({ onNavigate }: ExpenseApplicationProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('経費申請データ:', expenses);
-    alert('経費申請が送信されました！');
-    onNavigate('dashboard');
+    
+    const submitApplication = async () => {
+      const title = `経費申請_${new Date().toLocaleDateString('ja-JP')}`;
+      const items = expenses.map(expense => ({
+        category: expense.category,
+        date: expense.date,
+        amount: expense.amount,
+        description: expense.description,
+        receipt_url: expense.ocrResult ? `receipt_${expense.id}` : undefined
+      }));
+
+      const result = await createApplication(title, items);
+
+      if (result.success) {
+        alert('経費申請が送信されました！');
+        onNavigate('dashboard');
+      } else {
+        alert(`申請の送信に失敗しました: ${result.error}`);
+      }
+    };
+
+    submitApplication();
   };
 
   const onBack = () => {
@@ -284,10 +305,11 @@ function ExpenseApplication({ onNavigate }: ExpenseApplicationProps) {
                   </button>
                   <button
                     type="submit"
+                    disabled={loading}
                     className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-navy-700 to-navy-900 hover:from-navy-800 hover:to-navy-950 text-white rounded-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105"
                   >
                     <Save className="w-5 h-5" />
-                    <span>申請を送信</span>
+                    <span>{loading ? '送信中...' : '申請を送信'}</span>
                   </button>
                 </div>
               </form>

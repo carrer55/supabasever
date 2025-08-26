@@ -1,4 +1,6 @@
-// ローカル認証システム
+import { supabase } from './supabase';
+import { createProfile, getProfile } from './supabase';
+
 interface User {
   id: string;
   email: string;
@@ -6,6 +8,8 @@ interface User {
   company: string;
   position: string;
   phone: string;
+  department: string;
+  role: string;
 }
 
 interface AuthState {
@@ -13,47 +17,87 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-class LocalAuth {
-  private static instance: LocalAuth;
+class SupabaseAuth {
+  private static instance: SupabaseAuth;
   private authState: AuthState = {
     user: null,
     isAuthenticated: false
   };
   private listeners: ((state: AuthState) => void)[] = [];
 
-  static getInstance(): LocalAuth {
-    if (!LocalAuth.instance) {
-      LocalAuth.instance = new LocalAuth();
+  static getInstance(): SupabaseAuth {
+    if (!SupabaseAuth.instance) {
+      SupabaseAuth.instance = new SupabaseAuth();
     }
-    return LocalAuth.instance;
+    return SupabaseAuth.instance;
   }
 
   constructor() {
-    // ローカルストレージから認証状態を復元
-    this.restoreAuthState();
+    // Supabase認証状態の監視
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        await this.loadUserProfile(session.user.id);
+      } else {
+        this.authState = {
+          user: null,
+          isAuthenticated: false
+        };
+        this.notifyListeners();
+      }
+    });
+
+    // 初期認証状態の確認
+    this.checkInitialAuth();
   }
 
-  private restoreAuthState() {
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      try {
+  private async checkInitialAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await this.loadUserProfile(session.user.id);
+    }
+  }
+
+  private async loadUserProfile(userId: string) {
+    const { data: profile, error } = await getProfile(userId);
+    
+    if (profile) {
+      this.authState = {
+        user: {
+          id: profile.id,
+          email: profile.email,
+          name: profile.name || '',
+          company: profile.company || '',
+          position: profile.position || '',
+          phone: profile.phone || '',
+          department: profile.department || '',
+          role: profile.role || 'user'
+        },
+        isAuthenticated: true
+      };
+    } else {
+      // プロフィールが存在しない場合は作成
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const newProfile = {
+          id: user.id,
+          email: user.email || '',
+          name: '',
+          company: '',
+          position: '',
+          phone: '',
+          department: '',
+          role: 'user'
+        };
+        
+        await createProfile(newProfile);
         this.authState = {
-          user: JSON.parse(savedUser),
+          user: newProfile,
           isAuthenticated: true
         };
-      } catch (error) {
-        console.error('Failed to restore auth state:', error);
-        localStorage.removeItem('currentUser');
       }
     }
-  }
-
-  private saveAuthState() {
-    if (this.authState.user) {
-      localStorage.setItem('currentUser', JSON.stringify(this.authState.user));
-    } else {
-      localStorage.removeItem('currentUser');
-    }
+    
+    this.notifyListeners();
   }
 
   private notifyListeners() {
@@ -68,50 +112,28 @@ class LocalAuth {
   }
 
   async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
-    // デモアカウント
-    if (email === 'demo' && password === 'pass9981') {
-      const demoUser: User = {
-        id: 'demo-user',
-        email: 'demo',
-        name: 'デモユーザー',
-        company: '株式会社デモ',
-        position: '代表取締役',
-        phone: '090-0000-0000'
-      };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-      this.authState = {
-        user: demoUser,
-        isAuthenticated: true
-      };
+      if (error) {
+        return { success: false, error: error.message };
+      }
 
-      this.saveAuthState();
-      this.notifyListeners();
-      return { success: true };
+      if (data.user) {
+        await this.loadUserProfile(data.user.id);
+        return { success: true };
+      }
+
+      return { success: false, error: 'ログインに失敗しました' };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'ログインエラーが発生しました' 
+      };
     }
-
-    // 簡単なローカル認証（実際のプロダクションでは使用しない）
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    const user = users.find((u: any) => u.email === email && u.password === password);
-
-    if (user) {
-      this.authState = {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          company: user.company,
-          position: user.position,
-          phone: user.phone
-        },
-        isAuthenticated: true
-      };
-
-      this.saveAuthState();
-      this.notifyListeners();
-      return { success: true };
-    }
-
-    return { success: false, error: 'メールアドレスまたはパスワードが正しくありません' };
   }
 
   async register(userData: {
@@ -122,45 +144,63 @@ class LocalAuth {
     position: string;
     phone: string;
   }): Promise<{ success: boolean; error?: string }> {
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    
-    // 既存ユーザーチェック
-    if (users.some((u: any) => u.email === userData.email)) {
-      return { success: false, error: 'このメールアドレスは既に登録されています' };
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          emailRedirectTo: undefined // メール確認を無効化
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        // プロフィール作成
+        const profileData = {
+          id: data.user.id,
+          email: userData.email,
+          name: userData.name,
+          company: userData.company,
+          position: userData.position,
+          phone: userData.phone,
+          department: '',
+          role: 'user'
+        };
+
+        const { error: profileError } = await createProfile(profileData);
+        
+        if (profileError) {
+          return { success: false, error: 'プロフィール作成に失敗しました' };
+        }
+
+        // 自動ログイン
+        this.authState = {
+          user: profileData,
+          isAuthenticated: true
+        };
+        this.notifyListeners();
+
+        return { success: true };
+      }
+
+      return { success: false, error: '登録に失敗しました' };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '登録エラーが発生しました' 
+      };
     }
-
-    const newUser = {
-      id: Date.now().toString(),
-      ...userData
-    };
-
-    users.push(newUser);
-    localStorage.setItem('registeredUsers', JSON.stringify(users));
-
-    // 自動ログイン
-    this.authState = {
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        company: newUser.company,
-        position: newUser.position,
-        phone: newUser.phone
-      },
-      isAuthenticated: true
-    };
-
-    this.saveAuthState();
-    this.notifyListeners();
-    return { success: true };
   }
 
-  logout() {
+  async logout() {
+    await supabase.auth.signOut();
     this.authState = {
       user: null,
       isAuthenticated: false
     };
-    this.saveAuthState();
     this.notifyListeners();
   }
 
@@ -177,5 +217,5 @@ class LocalAuth {
   }
 }
 
-export const auth = LocalAuth.getInstance();
+export const auth = SupabaseAuth.getInstance();
 export type { User, AuthState };

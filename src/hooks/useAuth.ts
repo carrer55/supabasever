@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { auth, type User, type AuthState } from '../lib/auth';
+import { updateProfile as updateSupabaseProfile } from '../lib/supabase';
 
 export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>(auth.getAuthState());
@@ -45,25 +46,39 @@ export function useAuth() {
   };
 
   const updateProfile = async (updates: Partial<User>) => {
-    // ローカル実装では、現在のユーザー情報を更新
     const currentUser = auth.getCurrentUser();
-    if (currentUser) {
-      const updatedUser = { ...currentUser, ...updates };
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-      return { success: true, data: updatedUser };
+    if (!currentUser) {
+      return { success: false, error: 'ユーザーが見つかりません' };
     }
-    return { success: false, error: 'ユーザーが見つかりません' };
+
+    setLoading(true);
+    try {
+      const { data, error } = await updateSupabaseProfile(currentUser.id, updates);
+      
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'プロフィール更新に失敗しました' 
+      };
+    } finally {
+      setLoading(false);
+    }
   };
 
   return {
     user: authState.user,
-    profile: authState.user, // ローカル実装では同じオブジェクト
+    profile: authState.user,
     loading,
     login,
     register,
     logout,
     updateProfile,
     isAuthenticated: authState.isAuthenticated,
-    isOnboardingComplete: true // ローカル実装では常にtrue
+    isOnboardingComplete: true
   };
 }

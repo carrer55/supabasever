@@ -1,77 +1,54 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Mail, Lock, Eye, EyeOff, UserPlus, ArrowLeft } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { Mail, Lock, Eye, EyeOff, UserPlus, ArrowLeft, User, Building, Phone, Briefcase } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 interface RegisterProps {
   onNavigate: (view: string) => void;
 }
 
-// Zodスキーマ定義
-const registerSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'メールアドレスは必須です')
-    .email('正しいメールアドレスを入力してください'),
-  password: z
-    .string()
-    .min(8, 'パスワードは8文字以上で入力してください'),
-  confirmPassword: z
-    .string()
-    .min(1, 'パスワード再確認は必須です')
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "パスワードが一致しません",
-  path: ["confirmPassword"],
-});
-
-type RegisterFormData = z.infer<typeof registerSchema>;
-
 function Register({ onNavigate }: RegisterProps) {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    name: '',
+    company: '',
+    position: '',
+    phone: ''
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const { register: registerUser, loading } = useAuth();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isValid }
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    mode: 'onChange'
-  });
-
-  const onSubmit = async (data: RegisterFormData) => {
-    setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
 
-    try {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password
-      });
+    // バリデーション
+    if (formData.password !== formData.confirmPassword) {
+      setError('パスワードが一致しません');
+      return;
+    }
 
-      if (signUpError) {
-        if (signUpError.message.includes('already registered')) {
-          setError('このメールアドレスは既に登録されています。ログイン画面からログインしてください。');
-        } else {
-          setError(signUpError.message);
-        }
-        return;
-      }
+    if (formData.password.length < 8) {
+      setError('パスワードは8文字以上で入力してください');
+      return;
+    }
 
-      if (signUpData.user) {
-        // サインアップ成功 - 確認メール送信画面へ
-        onNavigate('register-success');
-      }
-      
-    } catch (err) {
-      console.error('Registration catch error:', err);
-      setError('登録に失敗しました。もう一度お試しください。');
-    } finally {
-      setIsLoading(false);
+    const result = await registerUser({
+      email: formData.email,
+      password: formData.password,
+      name: formData.name,
+      company: formData.company,
+      position: formData.position,
+      phone: formData.phone
+    });
+
+    if (result.success) {
+      onNavigate('register-success');
+    } else {
+      setError(result.error || '登録に失敗しました');
     }
   };
 
@@ -96,12 +73,79 @@ function Register({ onNavigate }: RegisterProps) {
 
           {/* 登録フォーム */}
           <div className="backdrop-blur-xl bg-white/20 rounded-xl p-8 border border-white/30 shadow-2xl">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="bg-red-50/50 border border-red-200/50 rounded-lg p-4">
                   <p className="text-red-700 text-sm">{error}</p>
                 </div>
               )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <User className="w-4 h-4 inline mr-1" />
+                  氏名 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white/50 border border-white/40 rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-xl"
+                  placeholder="山田太郎"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <Building className="w-4 h-4 inline mr-1" />
+                  法人名 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.company}
+                  onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white/50 border border-white/40 rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-xl"
+                  placeholder="株式会社サンプル"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <Briefcase className="w-4 h-4 inline mr-1" />
+                  役職 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.position}
+                  onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white/50 border border-white/40 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-xl"
+                  required
+                >
+                  <option value="">役職を選択してください</option>
+                  <option value="代表取締役">代表取締役</option>
+                  <option value="取締役">取締役</option>
+                  <option value="部長">部長</option>
+                  <option value="課長">課長</option>
+                  <option value="主任">主任</option>
+                  <option value="一般職">一般職</option>
+                  <option value="その他">その他</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <Phone className="w-4 h-4 inline mr-1" />
+                  電話番号 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white/50 border border-white/40 rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-xl"
+                  placeholder="090-1234-5678"
+                  required
+                />
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -111,18 +155,13 @@ function Register({ onNavigate }: RegisterProps) {
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <input
                     type="email"
-                    {...register('email')}
-                    className={`w-full pl-10 pr-4 py-3 bg-white/50 border rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 backdrop-blur-xl ${
-                      errors.email 
-                        ? 'border-red-400 focus:ring-red-400' 
-                        : 'border-white/40 focus:ring-emerald-400'
-                    }`}
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/40 rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-xl"
                     placeholder="your@email.com"
+                    required
                   />
                 </div>
-                {errors.email && (
-                  <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>
-                )}
               </div>
 
               <div>
@@ -133,13 +172,11 @@ function Register({ onNavigate }: RegisterProps) {
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    {...register('password')}
-                    className={`w-full pl-10 pr-12 py-3 bg-white/50 border rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 backdrop-blur-xl ${
-                      errors.password 
-                        ? 'border-red-400 focus:ring-red-400' 
-                        : 'border-white/40 focus:ring-emerald-400'
-                    }`}
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full pl-10 pr-12 py-3 bg-white/50 border border-white/40 rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-xl"
                     placeholder="8文字以上のパスワード"
+                    required
                   />
                   <button
                     type="button"
@@ -149,9 +186,6 @@ function Register({ onNavigate }: RegisterProps) {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                {errors.password && (
-                  <p className="text-red-600 text-sm mt-1">{errors.password.message}</p>
-                )}
               </div>
 
               <div>
@@ -162,13 +196,11 @@ function Register({ onNavigate }: RegisterProps) {
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
-                    {...register('confirmPassword')}
-                    className={`w-full pl-10 pr-12 py-3 bg-white/50 border rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 backdrop-blur-xl ${
-                      errors.confirmPassword 
-                        ? 'border-red-400 focus:ring-red-400' 
-                        : 'border-white/40 focus:ring-emerald-400'
-                    }`}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    className="w-full pl-10 pr-12 py-3 bg-white/50 border border-white/40 rounded-lg text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 backdrop-blur-xl"
                     placeholder="パスワードを再入力"
+                    required
                   />
                   <button
                     type="button"
@@ -178,18 +210,15 @@ function Register({ onNavigate }: RegisterProps) {
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                {errors.confirmPassword && (
-                  <p className="text-red-600 text-sm mt-1">{errors.confirmPassword.message}</p>
-                )}
               </div>
 
               <button
                 type="submit"
-                disabled={isLoading || !isValid}
+                disabled={loading}
                 className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white rounded-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <UserPlus className="w-5 h-5" />
-                <span>{isLoading ? '登録中...' : '新規登録'}</span>
+                <span>{loading ? '登録中...' : '新規登録'}</span>
               </button>
             </form>
 

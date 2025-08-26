@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, RotateCcw } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 interface LoginProps {
   onNavigate: (view: string) => void;
@@ -11,110 +11,19 @@ function Login({ onNavigate, onLoginSuccess }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const { login, loading } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
-    // デモアカウントの処理
-    if (email === 'demo' && password === 'pass9981') {
-      try {
-        // デモユーザーのプロフィール情報をローカルストレージに設定
-        const demoProfile = {
-          id: 'demo-user-id',
-          full_name: 'デモユーザー',
-          company_name: '株式会社デモ',
-          position: '代表取締役',
-          phone: '090-0000-0000',
-          onboarding_completed: true,
-          role: 'admin'
-        };
-        
-        localStorage.setItem('userProfile', JSON.stringify(demoProfile));
-        localStorage.setItem('demoMode', 'true');
-        
-        // 認証状態をシミュレート
-        const demoSession = {
-          user: {
-            id: 'demo-user-id',
-            email: 'demo',
-            email_confirmed_at: new Date().toISOString()
-          }
-        };
-        
-        localStorage.setItem('demoSession', JSON.stringify(demoSession));
-        
-        // ログイン成功
-        onLoginSuccess();
-        return;
-      } catch (err) {
-        setError('デモアカウントのログインに失敗しました。');
-        setIsLoading(false);
-        return;
-      }
-    }
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          setError('メールアドレスまたはパスワードが正しくありません。');
-        } else if (error.message.includes('Email not confirmed')) {
-          setError('メールアドレスの確認が完了していません。確認メールをご確認ください。');
-        } else {
-          setError(error.message);
-        }
-        return;
-      }
-
-      if (data.user) {
-        // プロフィール情報を確認
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error('Profile fetch error:', profileError);
-          setError('プロフィール情報の取得に失敗しました。');
-          return;
-        }
-
-        if (!profile) {
-          // プロフィールが存在しない場合は作成
-          const { error: createError } = await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              email: data.user.email || '',
-              onboarding_completed: false
-            });
-
-          if (createError) {
-            console.error('Profile creation error:', createError);
-          }
-          // プロフィールが存在しない場合は本登録へ
-          onNavigate('onboarding');
-        } else if (!profile.onboarding_completed) {
-          // 本登録が未完了の場合
-          onNavigate('onboarding');
-        } else {
-          // ログイン成功
-          onLoginSuccess();
-        }
-      }
-    } catch (err) {
-      setError('ログインに失敗しました。もう一度お試しください。');
-    } finally {
-      setIsLoading(false);
+    const result = await login(email, password);
+    
+    if (result.success) {
+      onLoginSuccess();
+    } else {
+      setError(result.error || 'ログインに失敗しました');
     }
   };
 
@@ -145,6 +54,15 @@ function Login({ onNavigate, onLoginSuccess }: LoginProps) {
                   <p className="text-red-700 text-sm">{error}</p>
                 </div>
               )}
+
+              {/* デモアカウント案内 */}
+              <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-800 mb-2">デモアカウント</h3>
+                <p className="text-blue-700 text-sm mb-2">
+                  メールアドレス: <code className="bg-blue-100 px-1 rounded">demo</code><br />
+                  パスワード: <code className="bg-blue-100 px-1 rounded">pass9981</code>
+                </p>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -189,11 +107,11 @@ function Login({ onNavigate, onLoginSuccess }: LoginProps) {
 
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={loading}
                 className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-navy-600 to-navy-800 hover:from-navy-700 hover:to-navy-900 text-white rounded-lg font-medium shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <LogIn className="w-5 h-5" />
-                <span>{isLoading ? 'ログイン中...' : 'ログイン'}</span>
+                <span>{loading ? 'ログイン中...' : 'ログイン'}</span>
               </button>
             </form>
 

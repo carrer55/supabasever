@@ -64,9 +64,9 @@ class SupabaseAuth {
       this.authState = {
         user: {
           id: profile.id,
-          email: profile.email,
-          name: profile.name || '',
-          company: profile.company || '',
+          email: '', // Supabase authから取得
+          name: profile.full_name || '',
+          company: profile.company_name || '',
           position: profile.position || '',
           phone: profile.phone || '',
           department: profile.department || '',
@@ -78,20 +78,26 @@ class SupabaseAuth {
       // プロフィールが存在しない場合は作成
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const newProfile = {
-          id: user.id,
-          email: user.email || '',
-          name: '',
-          company: '',
+        const profileData = {
+          full_name: '',
+          company_name: '',
           position: '',
           phone: '',
-          department: '',
-          role: 'user'
+          department: ''
         };
         
-        await createProfile(newProfile);
+        await createProfile(profileData);
         this.authState = {
-          user: newProfile,
+          user: {
+            id: user.id,
+            email: user.email || '',
+            name: '',
+            company: '',
+            position: '',
+            phone: '',
+            department: '',
+            role: 'user'
+          },
           isAuthenticated: true
         };
       }
@@ -160,14 +166,11 @@ class SupabaseAuth {
       if (data.user) {
         // プロフィール作成
         const profileData = {
-          id: data.user.id,
-          email: userData.email,
-          name: userData.name,
-          company: userData.company,
+          full_name: userData.name,
+          company_name: userData.company,
           position: userData.position,
           phone: userData.phone,
-          department: '',
-          role: 'user'
+          department: ''
         };
 
         const { error: profileError } = await createProfile(profileData);
@@ -178,7 +181,16 @@ class SupabaseAuth {
 
         // 自動ログイン
         this.authState = {
-          user: profileData,
+          user: {
+            id: data.user.id,
+            email: userData.email,
+            name: userData.name,
+            company: userData.company,
+            position: userData.position,
+            phone: userData.phone,
+            department: '',
+            role: 'user'
+          },
           isAuthenticated: true
         };
         this.notifyListeners();

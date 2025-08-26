@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createExpenseApplication, getExpenseApplications } from '../lib/supabase';
-import { auth } from '../lib/auth';
-
+  createApplication, 
+  getApplications 
 interface ExpenseItem {
   id?: string;
   category: string;
@@ -11,28 +11,18 @@ interface ExpenseItem {
   receipt_url?: string;
 }
 
-interface ExpenseApplication {
+interface Application {
   id: string;
   user_id: string;
+  type: string;
   title: string;
+  description?: string;
+  data: any;
   total_amount: number;
-  status: string;
-  approver_id?: string;
-  approved_at?: string;
-  created_at: string;
-  updated_at: string;
-  profiles?: {
-    name: string;
-    department: string;
-  };
-  approver?: {
-    name: string;
-  };
-  expense_items?: ExpenseItem[];
 }
 
 export function useExpenses() {
-  const [applications, setApplications] = useState<ExpenseApplication[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +34,7 @@ export function useExpenses() {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await getExpenseApplications(currentUser.id);
+      const { data, error: fetchError } = await getApplications(currentUser.id, 'expense');
       
       if (fetchError) {
         setError(fetchError.message);
@@ -78,13 +68,13 @@ export function useExpenses() {
 
     try {
       const { data, error: createError } = await createExpenseApplication(
-        {
-          user_id: currentUser.id,
-          title,
-          total_amount: totalAmount
-        },
-        items
-      );
+      const { data, error: createError } = await createApplication({
+        user_id: currentUser.id,
+        type: 'expense',
+        title: applicationData.title,
+        data: { items },
+        total_amount: applicationData.total_amount
+      });
 
       if (createError) {
         setError(createError.message);

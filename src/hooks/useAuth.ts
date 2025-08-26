@@ -51,9 +51,17 @@ export function useAuth() {
       return { success: false, error: 'ユーザーが見つかりません' };
     }
 
+    // フロントエンドのUser型からSupabaseのprofiles型にマッピング
+    const profileUpdates: any = {};
+    if (updates.name !== undefined) profileUpdates.full_name = updates.name;
+    if (updates.company !== undefined) profileUpdates.company_name = updates.company;
+    if (updates.position !== undefined) profileUpdates.position = updates.position;
+    if (updates.phone !== undefined) profileUpdates.phone = updates.phone;
+    if (updates.department !== undefined) profileUpdates.department = updates.department;
+
     setLoading(true);
     try {
-      const { data, error } = await updateSupabaseProfile(currentUser.id, updates);
+      const { data, error } = await updateSupabaseProfile(currentUser.id, profileUpdates);
       
       if (error) {
         return { success: false, error: error.message };

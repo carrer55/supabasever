@@ -23,6 +23,7 @@ export async function testConnection() {
           message: 'データベーステーブルが作成されていません', 
           details: 'マイグレーションを実行してテーブルを作成してください',
           error: 'Tables not created' 
+          error: 'Tables not created' 
         };
       }
       
@@ -51,22 +52,15 @@ export async function testConnection() {
 
 // プロフィール関連
 export async function createProfile(profileData: {
-  id: string;
-  email: string;
-  name: string;
-  company: string;
-  position: string;
-  phone: string;
+  full_name?: string;
+  company_name?: string;
+  position?: string;
+  phone?: string;
   department?: string;
-  role?: string;
 }) {
   const { data, error } = await supabase
     .from('profiles')
-    .insert([{
-      ...profileData,
-      department: profileData.department || '',
-      role: profileData.role || 'user'
-    }])
+    .insert([profileData])
     .select()
     .single();
 
@@ -83,13 +77,7 @@ export async function getProfile(userId: string) {
   return { data, error };
 }
 
-export async function updateProfile(userId: string, updates: Partial<{
-  name: string;
-  company: string;
-  position: string;
-  phone: string;
-  department: string;
-}>) {
+export async function updateProfile(userId: string, updates: any) {
   const { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -100,21 +88,17 @@ export async function updateProfile(userId: string, updates: Partial<{
   return { data, error };
 }
 
-// 出張申請関連
-export async function createBusinessTripApplication(applicationData: {
+// 申請関連（既存のapplicationsテーブルを使用）
+export async function createApplication(applicationData: {
   user_id: string;
+  type: string;
   title: string;
-  purpose: string;
-  start_date: string;
-  end_date: string;
-  destination: string;
-  estimated_amount: number;
-  daily_allowance: number;
-  transportation_cost: number;
-  accommodation_cost: number;
+  description?: string;
+  data: any;
+  total_amount?: number;
 }) {
   const { data, error } = await supabase
-    .from('business_trip_applications')
+    .from('applications')
     .insert([applicationData])
     .select()
     .single();
@@ -122,21 +106,26 @@ export async function createBusinessTripApplication(applicationData: {
   return { data, error };
 }
 
-export async function getBusinessTripApplications(userId: string) {
+export async function getApplications(userId: string, type?: string) {
+  let query = supabase
+    .from('applications')
+    .select('*')
+    .eq('user_id', userId);
+    
+  if (type) {
+    query = query.eq('type', type);
+  }
+  
   const { data, error } = await supabase
-    .from('business_trip_applications')
-    .select(`
-      *,
-      profiles!business_trip_applications_user_id_fkey(name, department),
-      approver:profiles!business_trip_applications_approver_id_fkey(name)
-    `)
+    .from('applications')
+    .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   return { data, error };
 }
 
-export async function updateBusinessTripApplicationStatus(
+export async function updateApplicationStatus(
   applicationId: string, 
   status: string, 
   approverId?: string
@@ -147,12 +136,12 @@ export async function updateBusinessTripApplicationStatus(
   };
   
   if (status === 'approved' && approverId) {
-    updates.approver_id = approverId;
     updates.approved_at = new Date().toISOString();
+    updates.approved_by = approverId;
   }
 
   const { data, error } = await supabase
-    .from('business_trip_applications')
+    .from('applications')
     .update(updates)
     .eq('id', applicationId)
     .select()
@@ -161,110 +150,17 @@ export async function updateBusinessTripApplicationStatus(
   return { data, error };
 }
 
-// 経費申請関連
-export async function createExpenseApplication(applicationData: {
-  user_id: string;
-  title: string;
-  total_amount: number;
-}, items: Array<{
-  category: string;
-  date: string;
-  amount: number;
-  description: string;
-  receipt_url?: string;
-}>) {
-  // 経費申請を作成
-  const { data: application, error: appError } = await supabase
-    .from('expense_applications')
-    .insert([applicationData])
-    .select()
-    .single();
-
-  if (appError || !application) {
-    return { data: null, error: appError };
-  }
-
-  // 経費項目を作成
-  const itemsWithAppId = items.map(item => ({
-    ...item,
-    expense_application_id: application.id
-  }));
-
-  const { data: expenseItems, error: itemsError } = await supabase
-    .from('expense_items')
-    .insert(itemsWithAppId)
-    .select();
-
-  if (itemsError) {
-    // ロールバック：申請を削除
-    await supabase
-      .from('expense_applications')
-      .delete()
-      .eq('id', application.id);
-    
-    return { data: null, error: itemsError };
-  }
-
-  return { data: { application, items: expenseItems }, error: null };
-}
-
-export async function getExpenseApplications(userId: string) {
-  const { data, error } = await supabase
-    .from('expense_applications')
-    .select(`
-      *,
-      profiles!expense_applications_user_id_fkey(name, department),
-      approver:profiles!expense_applications_approver_id_fkey(name),
-      expense_items(*)
-    `)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-
-  return { data, error };
-}
-
-// 出張規程関連
-export async function createTravelRegulation(regulationData: {
-  company_name: string;
-  version: string;
-  status: string;
-  company_info: object;
-  articles: object;
-  positions: object[];
-  settings: object;
-  created_by: string;
-}) {
-  const { data, error } = await supabase
-    .from('travel_regulations')
-    .insert([regulationData])
-    .select()
-    .single();
-
-  return { data, error };
-}
-
-export async function getTravelRegulations(userId: string) {
-  const { data, error } = await supabase
-    .from('travel_regulations')
-    .select(`
-      *,
-      creator:profiles!travel_regulations_created_by_fkey(name)
-    `)
-    .eq('created_by', userId)
-    .order('created_at', { ascending: false });
-
-  return { data, error };
-}
-
 // 書類管理関連
 export async function createDocument(documentData: {
   user_id: string;
-  title: string;
+  organization_id?: string;
+  application_id?: string;
   type: string;
-  status: string;
-  content: object;
+  title: string;
+  content?: object;
   file_url?: string;
-  file_size?: string;
+  file_size?: number;
+  mime_type?: string;
 }) {
   const { data, error } = await supabase
     .from('documents')
@@ -291,7 +187,7 @@ export async function createNotification(notificationData: {
   type: string;
   title: string;
   message: string;
-  category: string;
+  data?: object;
 }) {
   const { data, error } = await supabase
     .from('notifications')
@@ -321,38 +217,4 @@ export async function markNotificationAsRead(notificationId: string) {
     .single();
 
   return { data, error };
-}
-
-// 管理者用関数
-export async function getAllApplicationsForAdmin() {
-  const { data: businessTrips, error: btError } = await supabase
-    .from('business_trip_applications')
-    .select(`
-      *,
-      profiles!business_trip_applications_user_id_fkey(name, department),
-      approver:profiles!business_trip_applications_approver_id_fkey(name)
-    `)
-    .order('created_at', { ascending: false });
-
-  const { data: expenses, error: expError } = await supabase
-    .from('expense_applications')
-    .select(`
-      *,
-      profiles!expense_applications_user_id_fkey(name, department),
-      approver:profiles!expense_applications_approver_id_fkey(name),
-      expense_items(*)
-    `)
-    .order('created_at', { ascending: false });
-
-  if (btError || expError) {
-    return { data: null, error: btError || expError };
-  }
-
-  return { 
-    data: { 
-      businessTrips: businessTrips || [], 
-      expenses: expenses || [] 
-    }, 
-    error: null 
-  };
 }

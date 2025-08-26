@@ -1,39 +1,30 @@
 import { useState, useEffect } from 'react';
 import { 
-  createBusinessTripApplication, 
-  getBusinessTripApplications, 
-  updateBusinessTripApplicationStatus 
+  createApplication, 
+  getApplications, 
+  updateApplicationStatus 
 } from '../lib/supabase';
 import { auth } from '../lib/auth';
 
-interface BusinessTripApplication {
+interface Application {
   id: string;
   user_id: string;
+  type: string;
   title: string;
-  purpose: string;
-  start_date: string;
-  end_date: string;
-  destination: string;
-  estimated_amount: number;
-  daily_allowance: number;
-  transportation_cost: number;
-  accommodation_cost: number;
+  description?: string;
+  data: any;
+  total_amount?: number;
   status: string;
-  approver_id?: string;
+  submitted_at?: string;
   approved_at?: string;
+  approved_by?: string;
+  rejection_reason?: string;
   created_at: string;
   updated_at: string;
-  profiles?: {
-    name: string;
-    department: string;
-  };
-  approver?: {
-    name: string;
-  };
 }
 
 export function useBusinessTrips() {
-  const [applications, setApplications] = useState<BusinessTripApplication[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +36,7 @@ export function useBusinessTrips() {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await getBusinessTripApplications(currentUser.id);
+      const { data, error: fetchError } = await getApplications(currentUser.id, 'business_trip');
       
       if (fetchError) {
         setError(fetchError.message);
@@ -83,9 +74,21 @@ export function useBusinessTrips() {
     setError(null);
 
     try {
-      const { data, error: createError } = await createBusinessTripApplication({
-        ...applicationData,
-        user_id: currentUser.id
+      const { data, error: createError } = await createApplication({
+        user_id: currentUser.id,
+        type: 'business_trip',
+        title: applicationData.title,
+        description: applicationData.purpose,
+        data: {
+          purpose: applicationData.purpose,
+          start_date: applicationData.start_date,
+          end_date: applicationData.end_date,
+          destination: applicationData.destination,
+          daily_allowance: applicationData.daily_allowance,
+          transportation_cost: applicationData.transportation_cost,
+          accommodation_cost: applicationData.accommodation_cost
+        },
+        total_amount: applicationData.estimated_amount
       });
 
       if (createError) {
@@ -115,7 +118,7 @@ export function useBusinessTrips() {
     setError(null);
 
     try {
-      const { data, error: updateError } = await updateBusinessTripApplicationStatus(
+      const { data, error: updateError } = await updateApplicationStatus(
         applicationId, 
         status, 
         approverId

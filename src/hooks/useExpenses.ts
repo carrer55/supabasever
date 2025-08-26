@@ -67,14 +67,12 @@ export function useExpenses() {
     setError(null);
 
     try {
-      const { data, error: createError } = await createExpenseApplication(
-      )
       const { data, error: createError } = await createApplication({
         user_id: currentUser.id,
         type: 'expense',
-        title: applicationData.title,
+        title: title,
         data: { items },
-        total_amount: applicationData.total_amount
+        total_amount: totalAmount
       });
 
       if (createError) {
